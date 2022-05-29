@@ -1,3 +1,6 @@
 .idea
 venv/
 venv2/
+src/GenLorenzData.py
+src/try.py
+src/bk.py
