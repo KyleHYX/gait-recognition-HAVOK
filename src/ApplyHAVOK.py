@@ -4,9 +4,9 @@ import scipy.signal
 from matplotlib import pyplot as plt
 
 # **********
-# description: reproducing code from HAVOK paper
+# description: Apply HAVOK on Hyperchaotic Systems
 # author: Hongye Xu
-# create: 05/20/2022
+# create: 06/10/2022
 # **********
 
 # some helper function
@@ -18,8 +18,8 @@ def svht(beta, s):
 # ********* Code starts here **********
 # load Lorenz data
 # t is 200000 * 1, xdat is 200000 * 3
-tLoader = scipy.io.loadmat("../Data/Lorenz-Data/tMatrix.mat")
-xdatLoader = scipy.io.loadmat("../Data/Lorenz-Data/xdatMatrix.mat")
+tLoader = scipy.io.loadmat("../Data/Lorenz-Data/tMatrix10.mat")
+xdatLoader = scipy.io.loadmat("../Data/Lorenz-Data/xdatMatrix10.mat")
 t = tLoader.get('t')
 xdat = xdatLoader.get('xdat')
 
@@ -29,21 +29,17 @@ xdat = xdatLoader.get('xdat')
 lrz_att_fig = plt.figure(figsize=(8,8))
 lrz_att_ax = lrz_att_fig.add_subplot(111, projection='3d')
 lrz_att_ax.plot3D(xdat[:, 0], xdat[:, 1], xdat[:, 2], color='blue')
-plt.title('Lorenz Attractor')
+plt.title('Attractor')
 plt.show()
 
 # some parameters
 stack_max = 100  # number of shift-stacked rows
 lmd = 0  # threshold for sparse regression
-r_max = 15  # maximum singular vectors to include
+r_max = 11  # maximum singular vectors to include
 dt = 0.001
+numObs = 60000
 
 # ********** eigen-time delay coordinates **********
-# H
-# t1 t2 t3 ... t_end - 100
-# t2 t3 t4 ...
-# ...
-# t100 t101 ...
 H = np.zeros([stack_max, len(xdat[:, 0]) - stack_max], np.double)
 for i in range(0, stack_max):
     H[i, :] = xdat[i: (len(xdat[:, 0]) - stack_max + i), 0]
@@ -82,7 +78,7 @@ B_0 = 0*B
 sys = scipy.signal.StateSpace(A, B, np.eye(r - 1), B_0, dt = dt)
 
 L = []
-for i in range(0, 199899):
+for i in range(0, numObs - 101):
     L.append(i * dt)
 
 #%%
@@ -90,17 +86,67 @@ for i in range(0, 199899):
 
 # ********* graph **********
 tspan = []
-for i in range(0, 200000):
+for i in range(0, numObs):
     tspan.append(0.001 * i)
 
 #%%
 # part 4 in matlab code
 # attractor
-fig4 = plt.figure(figsize=(8,3))
-fig4_1 = fig4.add_subplot(111)
-fig4_1.plot(tspan[300: 180000], x[300: 180000, 0])
-fig4_1.plot(tspan[300: 180000: 50], y_out[300: 180000: 50, 0], 'r+')
-plt.xlim((80, 200))
-plt.ylim((-.0051, .005))
+fig4 = plt.figure(figsize=(8,6))
+fig4_1 = fig4.add_subplot(211)
+fig4_1.plot(tspan[300: 40000], x[300: 40000, 0])
+fig4_1.plot(tspan[300: 40000: 50], y_out[300: 40000: 50, 0], 'r+')
+plt.xlim((0, 40))
+plt.ylim((-.0081, .008))
 plt.title('fig4_1')
+
+# part 4-2 in matlab code
+# attractor
+fig4_2 = fig4.add_subplot(212)
+import src.sth as sth
+fig4_2.plot(tspan[300: 40000], x[300: 40000, r_max - 1])
+plt.xlim([0, 40])
+plt.ylim([-.025, .024])
+plt.title('fig4_2')
+plt.show()
+
+# reconstructed attractor
+rc_att = plt.figure(figsize=(8,8))
+rc_att_ax = rc_att.add_subplot(111, projection='3d')
+rc_att_ax.plot3D(y_out[:, 0], y_out[:, 1], y_out[:, 2], color='blue')
+plt.title('reconstructed attractor')
+plt.show()
+
+# embedded attractor
+emb_att = plt.figure(figsize=(8,8))
+emb_att_ax = emb_att.add_subplot(111, projection='3d')
+emb_att_ax.plot3D(V[:, 0], V[:, 1], V[:, 2], color='blue')
+plt.title('embedded attractor')
+plt.show()
+
+#%%
+r, c = x.shape
+acc = 0
+for j in range(0, r):
+    xVal = x[j, 0]
+    x_upper = max(xVal * 1.3, xVal * 0.7)
+    x_lower = min(xVal * 1.3, xVal * 0.7)
+    if(y_out[j, 0] <= x_upper and y_out[j, 0] >= x_lower):
+        acc = acc + 1
+print("the accuracy is")
+print(acc/r)
+
+#%%
+r, c = x.shape
+diff = []
+for k in range(0, r):
+    xVal = x[k, 0]
+    yVal = y_out[k, 0]
+    diff.append(xVal - yVal)
+
+fig5 = plt.figure(figsize=(8,3))
+fig5_1 = fig5.add_subplot(111)
+fig5_1.plot(tspan[0:len(diff)], diff)
+plt.xlabel("time")
+plt.ylabel("diff")
 plt.show()
